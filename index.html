@@ -461,7 +461,7 @@
     </div>
 
     <script>
-      const API_BASE = "http://127.0.0.1:5000/api/courses";
+      const API_BASE = "http://localhost:5000/api/courses";
 
       const STATUSES = ["Not Started", "In Progress", "Completed"];
       const STATUS_CLASS = { "Not Started": "badge-ns", "In Progress": "badge-ip", Completed: "badge-cp" };
@@ -581,10 +581,23 @@
             "<td class='course-date'>" + escapeHtml(c.target_date) + "</td>" +
             "<td><span class='badge " + (STATUS_CLASS[c.status] || "badge-ns") + "'>" + escapeHtml(c.status) + "</span></td>" +
             "<td class='course-date'>" + formatDate(c.created_at) + "</td>" +
-            "<td><div class='row-actions'>" +
-            "<button class='btn-edit' data-edit='" + escapeHtml(c.id) + "'>Edit</button>" +
-            "<button class='btn-danger' data-del='" + escapeHtml(c.id) + "'>Remove</button>" +
-            "</div></td>";
+            "<td><div class='row-actions'></div></td>";
+          const actions = tr.querySelector(".row-actions");
+
+          const editBtn = document.createElement("button");
+          editBtn.type = "button";
+          editBtn.className = "btn-edit";
+          editBtn.textContent = "Edit";
+          editBtn.addEventListener("click", () => openEdit(c.id));
+
+          const delBtn = document.createElement("button");
+          delBtn.type = "button";
+          delBtn.className = "btn-danger";
+          delBtn.textContent = "Remove";
+          delBtn.addEventListener("click", () => removeCourse(c.id, delBtn));
+
+          actions.appendChild(editBtn);
+          actions.appendChild(delBtn);
           tbody.appendChild(tr);
         });
       }
@@ -654,19 +667,10 @@
         }
       });
 
-      // Delegated row actions
-      tbody.addEventListener("click", (e) => {
-        const editId = e.target.getAttribute && e.target.getAttribute("data-edit");
-        const delId = e.target.getAttribute && e.target.getAttribute("data-del");
-        if (editId) openEdit(editId);
-        else if (delId) removeCourse(delId);
-      });
-
-      async function removeCourse(id) {
+      async function removeCourse(id, btn) {
         const course = courses.find((c) => c.id === id);
         if (!course) return;
         if (!confirm("Remove \"" + course.name + "\"? This cannot be undone.")) return;
-        const btn = document.querySelector("[data-del='" + id + "']");
         if (btn) {
           btn.disabled = true;
           btn.textContent = "Removing…";
