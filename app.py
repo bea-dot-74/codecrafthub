@@ -3,8 +3,10 @@ import json
 import os
 
 from flask import Flask, jsonify, request
+from flask_cors import CORS  # 1. Importa CORS
 
 app = Flask(__name__)
+CORS(app)
 
 DATA_FILE = "courses.json"
 
@@ -56,7 +58,7 @@ def validate_course_data(data, partial=False):
     required_fields = {
         "name",
         "description",
-        "target_completion_date",
+        "target_date",
         "status"
     }
 
@@ -91,14 +93,14 @@ def validate_course_data(data, partial=False):
             + ", ".join(sorted(VALID_STATUSES))
         )
 
-    if "target_completion_date" in data:
+    if "target_date" in data:
         try:
             datetime.strptime(
-                data["target_completion_date"],
+                data["target_date"],
                 "%Y-%m-%d"
             )
         except ValueError:
-            return False, "target_completion_date must use YYYY-MM-DD format"
+            return False, "target_date must use YYYY-MM-DD format"
 
     return True, None
 
@@ -150,7 +152,7 @@ def create_course():
         "id": next_id,
         "name": data["name"],
         "description": data["description"],
-        "target_completion_date": data["target_completion_date"],
+        "target_date": data["target_date"],
         "status": data["status"]
     }
 
@@ -188,7 +190,7 @@ def replace_course(course_id):
     course.update({
         "name": data["name"],
         "description": data["description"],
-        "target_completion_date": data["target_completion_date"],
+        "target_date": data["target_date"],
         "status": data["status"]
     })
 
