@@ -656,7 +656,7 @@
         setLoading(btn, true);
         try {
           const created = await api("", "POST", data);
-          courses.unshift(created);
+          courses.push(created);
           renderRows();
           e.target.reset();
           toast("Course added successfully", "success");

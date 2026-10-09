@@ -3,12 +3,12 @@ import json
 import os
 
 from flask import Flask, jsonify, request
-from flask_cors import CORS  # 1. Importa CORS
+from flask_cors import CORS
 
 app = Flask(__name__)
 CORS(app)
 
-DATA_FILE = "courses.json"
+app.config.setdefault("DATA_FILE", "courses.json")
 
 VALID_STATUSES = {
     "Not Started",
@@ -19,11 +19,13 @@ VALID_STATUSES = {
 
 def read_courses():
     """Read all courses from the JSON file."""
-    if not os.path.exists(DATA_FILE):
+    data_file = app.config["DATA_FILE"]
+
+    if not os.path.exists(data_file):
         return []
 
     try:
-        with open(DATA_FILE, "r", encoding="utf-8") as file:
+        with open(data_file, "r", encoding="utf-8") as file:
             data = json.load(file)
 
             if isinstance(data, list):
@@ -37,7 +39,7 @@ def read_courses():
 
 def write_courses(courses):
     """Write all courses to the JSON file."""
-    with open(DATA_FILE, "w", encoding="utf-8") as file:
+    with open(app.config["DATA_FILE"], "w", encoding="utf-8") as file:
         json.dump(courses, file, indent=2)
 
 
@@ -81,11 +83,13 @@ def validate_course_data(data, partial=False):
             f"Unknown fields: {', '.join(sorted(unknown_fields))}"
         )
 
-    if "name" in data and not isinstance(data["name"], str):
-        return False, "name must be a string"
+    for field in ("name", "description"):
+        if field in data:
+            if not isinstance(data[field], str):
+                return False, f"{field} must be a string"
 
-    if "description" in data and not isinstance(data["description"], str):
-        return False, "description must be a string"
+            if not data[field].strip():
+                return False, f"{field} must not be empty"
 
     if "status" in data and data["status"] not in VALID_STATUSES:
         return False, (
@@ -99,7 +103,7 @@ def validate_course_data(data, partial=False):
                 data["target_date"],
                 "%Y-%m-%d"
             )
-        except ValueError:
+        except (TypeError, ValueError):
             return False, "target_date must use YYYY-MM-DD format"
 
     return True, None
@@ -127,11 +131,10 @@ def get_course(course_id):
 @app.post("/api/courses")
 def create_course():
     data = request.get_json(silent=True)
-    print("post")
 
     if not isinstance(data, dict):
         return jsonify({
-            "error": f"Post : Request body must be a JSON object, data: {data}"
+            "error": "Request body must be a JSON object"
         }), 400
 
     is_valid, error_message = validate_course_data(data)
@@ -153,7 +156,8 @@ def create_course():
         "name": data["name"],
         "description": data["description"],
         "target_date": data["target_date"],
-        "status": data["status"]
+        "status": data["status"],
+        "created_at": datetime.now().isoformat(timespec="seconds")
     }
 
     courses.append(new_course)
@@ -165,7 +169,6 @@ def create_course():
 @app.put("/api/courses/<int:course_id>")
 def replace_course(course_id):
     data = request.get_json(silent=True)
-    print("put")
 
     if not isinstance(data, dict):
         return jsonify({
@@ -202,7 +205,6 @@ def replace_course(course_id):
 @app.patch("/api/courses/<int:course_id>")
 def update_course(course_id):
     data = request.get_json(silent=True)
-    print("patch")
 
     if not isinstance(data, dict):
         return jsonify({
