@@ -264,6 +264,34 @@
 
       .row-actions { display: flex; gap: 0.4rem; white-space: nowrap; }
 
+      /* Prerequisites */
+      .prereq-list {
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 0.5rem 0.7rem;
+        max-height: 150px;
+        overflow-y: auto;
+        display: grid;
+        gap: 0.35rem;
+      }
+
+      .prereq-option {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-size: 0.9rem;
+        font-weight: 400;
+        cursor: pointer;
+      }
+
+      .prereq-option input { width: auto; }
+
+      .prereq-empty { color: var(--muted); font-size: 0.85rem; }
+      .hint { color: var(--muted); font-size: 0.78rem; font-weight: 400; }
+
+      .course-prereq { margin-top: 0.35rem; font-size: 0.8rem; color: var(--muted); }
+      .course-prereq.pending { color: #92400E; }
+
       /* Empty / error states */
       .state { text-align: center; padding: 2.5rem 1rem; color: var(--muted); }
       .state-error { color: var(--danger); }
@@ -385,6 +413,10 @@
                 <option value="Completed">Completed</option>
               </select>
             </div>
+            <div class="field full">
+              <label>Prerequisites <span class="hint">(optional — courses to complete first)</span></label>
+              <div class="prereq-list" id="prereq-list"></div>
+            </div>
           </div>
           <div class="actions">
             <button type="reset" class="btn-ghost">Clear</button>
@@ -448,6 +480,10 @@
                 <option value="In Progress">In Progress</option>
                 <option value="Completed">Completed</option>
               </select>
+            </div>
+            <div class="field">
+              <label>Prerequisites <span class="hint">(optional — courses to complete first)</span></label>
+              <div class="prereq-list" id="edit-prereq-list"></div>
             </div>
           </form>
         </div>
@@ -548,10 +584,57 @@
         );
       }
 
+      // ---------- Prerequisites ----------
+      function renderPrereqOptions(container, selected, excludeId) {
+        container.innerHTML = "";
+        const options = courses.filter((c) => c.id !== excludeId);
+
+        if (options.length === 0) {
+          container.innerHTML = '<div class="prereq-empty">No other courses available yet.</div>';
+          return;
+        }
+
+        options.forEach((c) => {
+          const label = document.createElement("label");
+          label.className = "prereq-option";
+          const box = document.createElement("input");
+          box.type = "checkbox";
+          box.value = c.id;
+          box.checked = selected.includes(c.id);
+          label.appendChild(box);
+          label.appendChild(document.createTextNode(c.name));
+          container.appendChild(label);
+        });
+      }
+
+      function getSelectedPrereqs(container) {
+        return Array.from(container.querySelectorAll("input:checked")).map((box) => Number(box.value));
+      }
+
+      function prereqSummary(course) {
+        const prereqs = (course.prerequisites || [])
+          .map((id) => courses.find((c) => c.id === id))
+          .filter(Boolean);
+
+        if (prereqs.length === 0) return "";
+
+        const pending = prereqs.filter((c) => c.status !== "Completed");
+        const names = prereqs
+          .map((c) => escapeHtml(c.name) + (c.status === "Completed" ? " ✓" : ""))
+          .join(", ");
+
+        return (
+          "<div class='course-prereq" + (pending.length ? " pending" : "") + "'>" +
+          (pending.length ? "⚠ " : "") + "Requires: " + names +
+          "</div>"
+        );
+      }
+
       // ---------- Render ----------
       function renderRows() {
         tbody.innerHTML = "";
         countPill.textContent = courses.length;
+        renderPrereqOptions($("prereq-list"), getSelectedPrereqs($("prereq-list")), null);
 
         if (loadingState.active) {
           stateMsg.innerHTML = '<div class="spinner-lg"></div>';
@@ -577,7 +660,8 @@
           const tr = document.createElement("tr");
           tr.innerHTML =
             "<td><div class='course-name'>" + escapeHtml(c.name) + "</div>" +
-            "<div class='course-desc'>" + escapeHtml(c.description) + "</div></td>" +
+            "<div class='course-desc'>" + escapeHtml(c.description) + "</div>" +
+            prereqSummary(c) + "</td>" +
             "<td class='course-date'>" + escapeHtml(c.target_date) + "</td>" +
             "<td><span class='badge " + (STATUS_CLASS[c.status] || "badge-ns") + "'>" + escapeHtml(c.status) + "</span></td>" +
             "<td class='course-date'>" + formatDate(c.created_at) + "</td>" +
@@ -646,6 +730,7 @@
           description: $("description").value,
           target_date: $("target_date").value,
           status: $("status").value,
+          prerequisites: getSelectedPrereqs($("prereq-list")),
         };
         const errs = validate(data);
         if (errs.length) {
@@ -657,8 +742,8 @@
         try {
           const created = await api("", "POST", data);
           courses.push(created);
-          renderRows();
           e.target.reset();
+          renderRows();
           toast("Course added successfully", "success");
         } catch (err) {
           toast("Add failed: " + err.message, "error", 4000);
@@ -678,6 +763,9 @@
         try {
           await api("/" + encodeURIComponent(id), "DELETE");
           courses = courses.filter((c) => c.id !== id);
+          courses.forEach((c) => {
+            if (c.prerequisites) c.prerequisites = c.prerequisites.filter((p) => p !== id);
+          });
           renderRows();
           toast("Course removed", "success");
         } catch (err) {
@@ -701,6 +789,7 @@
         $("edit-description").value = c.description;
         $("edit-target_date").value = c.target_date;
         $("edit-status").value = c.status;
+        renderPrereqOptions($("edit-prereq-list"), c.prerequisites || [], c.id);
         modalOverlay.classList.add("open");
         setTimeout(() => $("edit-name").focus(), 50);
       }
@@ -726,6 +815,7 @@
           description: $("edit-description").value,
           target_date: $("edit-target_date").value,
           status: $("edit-status").value,
+          prerequisites: getSelectedPrereqs($("edit-prereq-list")),
         };
         const errs = validate(data);
         if (errs.length) {

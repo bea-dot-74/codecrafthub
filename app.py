@@ -73,7 +73,7 @@ def validate_course_data(data, partial=False):
                 f"Missing fields: {', '.join(sorted(missing_fields))}"
             )
 
-    allowed_fields = required_fields
+    allowed_fields = required_fields | {"prerequisites"}
 
     unknown_fields = set(data.keys()) - allowed_fields
 
@@ -105,6 +105,62 @@ def validate_course_data(data, partial=False):
             )
         except (TypeError, ValueError):
             return False, "target_date must use YYYY-MM-DD format"
+
+    if "prerequisites" in data:
+        prerequisites = data["prerequisites"]
+
+        if not isinstance(prerequisites, list) or not all(
+            isinstance(item, int) and not isinstance(item, bool)
+            for item in prerequisites
+        ):
+            return False, "prerequisites must be a list of course IDs"
+
+        if len(set(prerequisites)) != len(prerequisites):
+            return False, "prerequisites must not contain duplicates"
+
+    return True, None
+
+
+def validate_prerequisites(course_id, prerequisites, courses):
+    """
+    Check that prerequisites refer to existing courses and
+    do not create a cycle (course_id is None for a new course).
+    """
+    existing_ids = {course["id"] for course in courses}
+    missing_ids = [item for item in prerequisites if item not in existing_ids]
+
+    if missing_ids:
+        return False, (
+            "Prerequisite courses not found: "
+            + ", ".join(str(item) for item in missing_ids)
+        )
+
+    if course_id is None:
+        return True, None
+
+    if course_id in prerequisites:
+        return False, "A course cannot be a prerequisite of itself"
+
+    graph = {
+        course["id"]: course.get("prerequisites", [])
+        for course in courses
+    }
+    graph[course_id] = prerequisites
+
+    to_visit = list(prerequisites)
+    visited = set()
+
+    while to_visit:
+        current = to_visit.pop()
+
+        if current == course_id:
+            return False, "Prerequisites would create a cycle"
+
+        if current in visited:
+            continue
+
+        visited.add(current)
+        to_visit.extend(graph.get(current, []))
 
     return True, None
 
@@ -145,6 +201,18 @@ def create_course():
         }), 400
 
     courses = read_courses()
+    prerequisites = data.get("prerequisites", [])
+
+    is_valid, error_message = validate_prerequisites(
+        None,
+        prerequisites,
+        courses
+    )
+
+    if not is_valid:
+        return jsonify({
+            "error": error_message
+        }), 400
 
     next_id = max(
         [course["id"] for course in courses],
@@ -157,6 +225,7 @@ def create_course():
         "description": data["description"],
         "target_date": data["target_date"],
         "status": data["status"],
+        "prerequisites": prerequisites,
         "created_at": datetime.now().isoformat(timespec="seconds")
     }
 
@@ -190,11 +259,25 @@ def replace_course(course_id):
             "error": "Course not found"
         }), 404
 
+    prerequisites = data.get("prerequisites", [])
+
+    is_valid, error_message = validate_prerequisites(
+        course_id,
+        prerequisites,
+        courses
+    )
+
+    if not is_valid:
+        return jsonify({
+            "error": error_message
+        }), 400
+
     course.update({
         "name": data["name"],
         "description": data["description"],
         "target_date": data["target_date"],
-        "status": data["status"]
+        "status": data["status"],
+        "prerequisites": prerequisites
     })
 
     write_courses(courses)
@@ -229,6 +312,18 @@ def update_course(course_id):
             "error": "Course not found"
         }), 404
 
+    if "prerequisites" in data:
+        is_valid, error_message = validate_prerequisites(
+            course_id,
+            data["prerequisites"],
+            courses
+        )
+
+        if not is_valid:
+            return jsonify({
+                "error": error_message
+            }), 400
+
     course.update(data)
     write_courses(courses)
 
@@ -246,6 +341,11 @@ def delete_course(course_id):
         }), 404
 
     courses.remove(course)
+
+    for other in courses:
+        if course_id in other.get("prerequisites", []):
+            other["prerequisites"].remove(course_id)
+
     write_courses(courses)
 
     return "", 204

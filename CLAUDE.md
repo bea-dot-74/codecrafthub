@@ -14,7 +14,7 @@ Gestore di corsi di apprendimento: API REST Flask + frontend HTML statico.
 - Test: `.venv\Scripts\python.exe -m pytest`
 
 ## Modello dati di un corso
-`id` (int), `name`, `description`, `target_date` (YYYY-MM-DD), `status` ("Not Started" | "In Progress" | "Completed"), `created_at` (ISO, impostato dal server).
+`id` (int), `name`, `description`, `target_date` (YYYY-MM-DD), `status` ("Not Started" | "In Progress" | "Completed"), `prerequisites` (lista di id, opzionale; niente auto-riferimenti né cicli, validati in `validate_prerequisites`), `created_at` (ISO, impostato dal server).
 
 ## Note
 - Repository: https://github.com/bea-dot-74/codecrafthub (branch `master`, pubblico).

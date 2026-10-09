@@ -138,3 +138,71 @@ def test_data_persists_to_file(client):
 
     with open(app.config["DATA_FILE"], encoding="utf-8") as file:
         assert '"Intro to Python"' in file.read()
+
+
+def test_prerequisites_default_to_empty_list(client):
+    body = create(client).get_json()
+
+    assert body["prerequisites"] == []
+
+
+def test_create_with_prerequisites(client):
+    create(client)
+    create(client, name="Second")
+    response = create(client, name="Advanced", prerequisites=[1, 2])
+
+    assert response.status_code == 201
+    assert response.get_json()["prerequisites"] == [1, 2]
+
+
+@pytest.mark.parametrize("prerequisites, message", [
+    ("1", "list of course IDs"),
+    ([1, "2"], "list of course IDs"),
+    ([True], "list of course IDs"),
+    ([1, 1], "duplicates"),
+    ([99], "not found"),
+])
+def test_create_rejects_invalid_prerequisites(client, prerequisites, message):
+    create(client)
+    response = create(client, prerequisites=prerequisites)
+
+    assert response.status_code == 400
+    assert message in response.get_json()["error"]
+
+
+def test_course_cannot_require_itself(client):
+    create(client)
+    response = client.patch("/api/courses/1", json={"prerequisites": [1]})
+
+    assert response.status_code == 400
+    assert "itself" in response.get_json()["error"]
+
+
+def test_prerequisites_cannot_create_cycle(client):
+    create(client)
+    create(client, name="Second", prerequisites=[1])
+    create(client, name="Third", prerequisites=[2])
+    response = client.patch("/api/courses/1", json={"prerequisites": [3]})
+
+    assert response.status_code == 400
+    assert "cycle" in response.get_json()["error"]
+
+
+def test_replace_sets_prerequisites(client):
+    create(client)
+    create(client, name="Second")
+    response = client.put(
+        "/api/courses/2",
+        json={**VALID_COURSE, "prerequisites": [1]}
+    )
+
+    assert response.status_code == 200
+    assert response.get_json()["prerequisites"] == [1]
+
+
+def test_delete_removes_course_from_prerequisites(client):
+    create(client)
+    create(client, name="Second", prerequisites=[1])
+    client.delete("/api/courses/1")
+
+    assert client.get("/api/courses/2").get_json()["prerequisites"] == []
