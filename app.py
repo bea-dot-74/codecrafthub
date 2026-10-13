@@ -1,6 +1,9 @@
 from datetime import datetime
+import filecmp
+import glob
 import json
 import os
+import shutil
 
 from flask import Flask, jsonify, request
 from flask_cors import CORS
@@ -17,6 +20,30 @@ VALID_STATUSES = {
 }
 
 
+class CorruptDataFileError(Exception):
+    """Raised when the data file exists but cannot be used."""
+
+    def __init__(self, data_file, backup_file):
+        super().__init__(data_file)
+        self.data_file = data_file
+        self.backup_file = backup_file
+
+
+def backup_corrupt_file(data_file):
+    """
+    Copy the corrupted data file next to the original and return the
+    backup path. An existing backup with the same content is reused.
+    """
+    for existing in glob.glob(glob.escape(data_file) + ".corrupt-*"):
+        if filecmp.cmp(data_file, existing, shallow=False):
+            return existing
+
+    timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+    backup_file = f"{data_file}.corrupt-{timestamp}"
+    shutil.copy2(data_file, backup_file)
+    return backup_file
+
+
 def read_courses():
     """Read all courses from the JSON file."""
     data_file = app.config["DATA_FILE"]
@@ -28,13 +55,13 @@ def read_courses():
         with open(data_file, "r", encoding="utf-8") as file:
             data = json.load(file)
 
-            if isinstance(data, list):
-                return data
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        data = None
 
-            return []
+    if isinstance(data, list):
+        return data
 
-    except json.JSONDecodeError:
-        return []
+    raise CorruptDataFileError(data_file, backup_corrupt_file(data_file))
 
 
 def write_courses(courses):
@@ -163,6 +190,16 @@ def validate_prerequisites(course_id, prerequisites, courses):
         to_visit.extend(graph.get(current, []))
 
     return True, None
+
+
+@app.errorhandler(CorruptDataFileError)
+def handle_corrupt_data_file(error):
+    message = (
+        f"Data file {os.path.basename(error.data_file)} is corrupted. "
+        f"A copy was saved as {os.path.basename(error.backup_file)}. "
+        "Please contact the administrator."
+    )
+    return jsonify({"error": message}), 500
 
 
 @app.get("/api/courses")

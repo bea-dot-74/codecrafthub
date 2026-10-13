@@ -2,3 +2,17 @@
 __pycache__/
 .pytest_cache/
 courses.json
+courses.json.corrupt-*
+
+# Materiale della formazione, non fa parte del progetto
+diario.md
+accompagnamento.md
+accompagnamento-2.md
+report_mattina.md
+report_pomeriggio.md
+mail_vittorio.md
+mail_vittorio_pomeriggio.md
+CLAUDE.old.md
+
+# Proposta non ancora approvata
+PROGETTO_MULTICANALE.md

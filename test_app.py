@@ -1,3 +1,5 @@
+import glob
+
 import pytest
 
 from app import app
@@ -138,6 +140,54 @@ def test_data_persists_to_file(client):
 
     with open(app.config["DATA_FILE"], encoding="utf-8") as file:
         assert '"Intro to Python"' in file.read()
+
+
+def write_data_file(content):
+    with open(app.config["DATA_FILE"], "w", encoding="utf-8") as file:
+        file.write(content)
+
+
+def backup_files():
+    return glob.glob(app.config["DATA_FILE"] + ".corrupt-*")
+
+
+def test_corrupt_file_returns_error_and_backup(client):
+    write_data_file("{broken")
+
+    response = client.get("/api/courses")
+
+    assert response.status_code == 500
+    assert "corrupted" in response.get_json()["error"]
+    assert len(backup_files()) == 1
+    with open(backup_files()[0], encoding="utf-8") as file:
+        assert file.read() == "{broken"
+
+
+def test_data_file_that_is_not_a_list_is_corrupt(client):
+    write_data_file('{"id": 1}')
+
+    response = client.get("/api/courses")
+
+    assert response.status_code == 500
+
+
+def test_corrupt_file_is_not_overwritten(client):
+    write_data_file("{broken")
+
+    response = create(client)
+
+    assert response.status_code == 500
+    with open(app.config["DATA_FILE"], encoding="utf-8") as file:
+        assert file.read() == "{broken"
+
+
+def test_corrupt_file_is_backed_up_once(client):
+    write_data_file("{broken")
+
+    client.get("/api/courses")
+    client.get("/api/courses")
+
+    assert len(backup_files()) == 1
 
 
 def test_prerequisites_default_to_empty_list(client):
