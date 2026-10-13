@@ -1,132 +1,138 @@
-# CodeCraftHub – Funzionalità
+🇬🇧 English | [🇮🇹 Italiano](README.it.md)
 
-CodeCraftHub è una piattaforma per pianificare e seguire il proprio percorso di apprendimento. Permette di registrare i corsi che si vogliono seguire, fissare una data obiettivo e tenere traccia dello stato di avanzamento.
+# CodeCraftHub
 
-L'applicazione è composta da due parti:
+CodeCraftHub helps you plan and track your own learning path. You list the courses you want to take, set a target date for each, and track whether they are not started, in progress or completed. Courses can depend on other courses (prerequisites).
 
-- **Backend** (`app.py`): un'API REST scritta in Python con Flask, che salva i corsi nel file `courses.json`.
-- **Frontend** (`index.html`): una pagina web che si apre nel browser e comunica con l'API.
+It has two parts:
+
+- **Backend** (`app.py`): a REST API written in Python with Flask. It stores courses in the `courses.json` file.
+- **Frontend** (`index.html`): a web page you open in the browser. It talks to the API.
+
+**Quick start (Windows):** see the step-by-step [installation guide](INSTALL.md).
 
 ---
 
-## 1. Il corso
+## 1. The course
 
-Ogni corso ha queste informazioni:
+Each course has these fields:
 
-| Campo | Descrizione | Obbligatorio |
+| Field | Description | Required |
 |---|---|---|
-| `id` | Numero identificativo, assegnato automaticamente | – (automatico) |
-| `name` | Nome del corso | Sì |
-| `description` | Cosa si imparerà | Sì |
-| `target_date` | Data entro cui completarlo, formato `AAAA-MM-GG` | Sì |
-| `status` | Stato di avanzamento | Sì |
-| `prerequisites` | Lista degli `id` dei corsi propedeutici, da fare prima | No (predefinito: nessuno) |
-| `created_at` | Data e ora di creazione, assegnata automaticamente | – (automatico) |
+| `id` | Identifier, assigned automatically | – (automatic) |
+| `name` | Course name | Yes |
+| `description` | What you will learn | Yes |
+| `target_date` | Date by which to complete it, format `YYYY-MM-DD` | Yes |
+| `status` | Progress status | Yes |
+| `prerequisites` | List of `id`s of courses to take first | No (default: none) |
+| `created_at` | Creation date and time, assigned automatically | – (automatic) |
 
-Gli stati possibili sono tre:
+There are three possible statuses:
 
-- **Not Started** – non ancora iniziato
-- **In Progress** – in corso
-- **Completed** – completato
+- **Not Started**
+- **In Progress**
+- **Completed**
 
-### Corsi propedeutici
-Un corso può avere uno o più **prerequisiti**, cioè altri corsi da completare prima. Il collegamento è facoltativo. Regole:
+### Prerequisites
+A course can have one or more **prerequisites**: other courses to complete first. The link is optional. Rules:
 
-- un corso non può essere prerequisito di se stesso;
-- non sono ammessi giri chiusi (per esempio A richiede B e B richiede A, anche passando per altri corsi);
-- se un corso viene eliminato, viene tolto automaticamente dai prerequisiti degli altri.
+- a course cannot be a prerequisite of itself;
+- loops are not allowed (for example, A requires B and B requires A, even through other courses);
+- when a course is deleted, it is automatically removed from the prerequisites of the others.
 
-I prerequisiti sono informativi: si può comunque iniziare un corso anche se i suoi prerequisiti non sono completati, ma l'interfaccia lo segnala.
-
----
-
-## 2. Funzionalità dell'interfaccia web
-
-### Aggiungere un corso
-Nella sezione **Add New Course** si compilano nome, data obiettivo, descrizione e stato e, se serve, si spuntano i corsi propedeutici nella casella **Prerequisites**. Poi si clicca **Add Course**. Il pulsante **Clear** svuota il modulo.
-Se manca un campo o la data non è valida, compare un messaggio di errore e il corso non viene salvato.
-
-### Visualizzare i corsi
-La sezione **Your Courses** mostra una tabella con tutti i corsi:
-
-- nome e descrizione;
-- i prerequisiti (**Requires: …**): quelli completati hanno il segno ✓; se almeno uno non è ancora completato, la riga è evidenziata con ⚠;
-- data obiettivo;
-- stato, evidenziato con un'etichetta colorata (grigio = non iniziato, giallo = in corso, verde = completato);
-- data di creazione;
-- pulsanti per modificare o eliminare.
-
-Accanto al titolo c'è un contatore con il numero totale dei corsi. Se non ci sono corsi, compare un invito ad aggiungerne uno.
-
-### Modificare un corso
-Il pulsante **Edit** apre una finestra con i dati del corso già compilati, compresi i prerequisiti (il corso stesso non compare nell'elenco). Dopo le modifiche si clicca **Save Changes**. La finestra si chiude con **Cancel**, con la **×**, cliccando fuori o premendo **Esc**.
-
-### Eliminare un corso
-Il pulsante **Remove** chiede conferma prima di cancellare il corso. L'operazione non si può annullare.
-
-### Messaggi e stati di caricamento
-- Ogni operazione mostra una notifica in alto a destra: verde se è riuscita, rossa in caso di errore.
-- Durante il salvataggio i pulsanti mostrano un indicatore di caricamento e non si possono cliccare di nuovo.
-- Se il backend non risponde, la pagina mostra l'errore e un pulsante **Retry** per riprovare.
-
-### Uso da smartphone
-La pagina si adatta agli schermi piccoli: il modulo passa su una colonna e la tabella si può scorrere in orizzontale.
+Prerequisites are informational: you can start a course even if its prerequisites are not completed, but the interface flags it.
 
 ---
 
-## 3. API REST
+## 2. Web interface features
 
-Indirizzo base: `http://localhost:5000/api/courses`
+### Add a course
+In the **Add New Course** section, fill in name, target date, description and status, and, if needed, tick the prerequisite courses in the **Prerequisites** box. Then click **Add Course**. The **Clear** button empties the form.
+If a field is missing or the date is invalid, an error message appears and the course is not saved.
 
-| Metodo | Percorso | Funzione | Risposta se riesce |
+### View courses
+The **Your Courses** section shows a table with all courses:
+
+- name and description;
+- prerequisites (**Requires: …**): completed ones have a ✓; if at least one is not completed yet, the row is flagged with ⚠;
+- target date;
+- status, shown as a colored badge (grey = not started, yellow = in progress, green = completed);
+- creation date;
+- buttons to edit or delete.
+
+Next to the title, a counter shows the total number of courses. If there are no courses, a message invites you to add one.
+
+### Edit a course
+The **Edit** button opens a window with the course data already filled in, prerequisites included (the course itself is not listed). After editing, click **Save Changes**. The window closes with **Cancel**, the **×**, by clicking outside it or by pressing **Esc**.
+
+### Delete a course
+The **Remove** button asks for confirmation before deleting the course. This cannot be undone.
+
+### Messages and loading states
+- Every operation shows a notification in the top right corner: green on success, red on error.
+- While saving, buttons show a loading indicator and cannot be clicked again.
+- If the backend does not respond, the page shows the error and a **Retry** button.
+
+### Mobile use
+The page adapts to small screens: the form switches to a single column and the table scrolls horizontally.
+
+---
+
+## 3. REST API
+
+Base URL: `http://localhost:5000/api/courses`
+
+| Method | Path | Purpose | Success response |
 |---|---|---|---|
-| `GET` | `/api/courses` | Elenco di tutti i corsi | 200 |
-| `GET` | `/api/courses/<id>` | Dettaglio di un corso | 200 |
-| `POST` | `/api/courses` | Crea un nuovo corso (tutti i campi obbligatori) | 201 |
-| `PUT` | `/api/courses/<id>` | Sostituisce tutti i dati di un corso | 200 |
-| `PATCH` | `/api/courses/<id>` | Modifica solo alcuni campi | 200 |
-| `DELETE` | `/api/courses/<id>` | Elimina un corso | 204 |
+| `GET` | `/api/courses` | List all courses | 200 |
+| `GET` | `/api/courses/<id>` | Get one course | 200 |
+| `POST` | `/api/courses` | Create a course (all fields required) | 201 |
+| `PUT` | `/api/courses/<id>` | Replace all data of a course | 200 |
+| `PATCH` | `/api/courses/<id>` | Update only some fields | 200 |
+| `DELETE` | `/api/courses/<id>` | Delete a course | 204 |
 
-Esempio di richiesta per creare un corso:
+Example request to create a course:
 
 ```json
 POST /api/courses
 {
   "name": "Intro to Python",
-  "description": "Basi del linguaggio",
+  "description": "Language basics",
   "target_date": "2026-12-31",
   "status": "Not Started",
   "prerequisites": [1, 2]
 }
 ```
 
-Il campo `prerequisites` si può omettere. Con `PUT` va inviato se si vogliono mantenere i prerequisiti, altrimenti vengono azzerati; con `PATCH` si modifica solo se presente.
+The `prerequisites` field can be omitted. With `PUT`, send it if you want to keep the prerequisites, otherwise they are cleared; with `PATCH`, it changes only if present.
 
-### Controlli sui dati
-L'API rifiuta la richiesta con errore **400** e un messaggio esplicativo se:
+### Data validation
+The API rejects the request with a **400** error and an explanatory message if:
 
-- il corpo della richiesta non è un oggetto JSON;
-- manca un campo obbligatorio (per `POST` e `PUT`);
-- è presente un campo non previsto;
-- nome o descrizione non sono testo, oppure sono vuoti;
-- lo stato non è uno dei tre ammessi;
-- la data non è nel formato `AAAA-MM-GG`;
-- i prerequisiti non sono una lista di `id`, contengono doppioni o corsi inesistenti, includono il corso stesso o creano un giro chiuso.
+- the request body is not a JSON object;
+- a required field is missing (for `POST` and `PUT`);
+- an unknown field is present;
+- name or description are not text, or are empty;
+- the status is not one of the three allowed values;
+- the date is not in `YYYY-MM-DD` format;
+- prerequisites are not a list of `id`s, contain duplicates or non-existent courses, include the course itself or create a loop.
 
-Se il corso richiesto non esiste, l'API risponde con errore **404**.
+If the requested course does not exist, the API responds with a **404** error.
 
 ---
 
-## 4. Avvio e test
+## 4. Run and test
+
+For step-by-step installation, see [INSTALL.md](INSTALL.md).
 
 ```bash
 .venv\Scripts\python.exe -m pip install -r requirements.txt
 .venv\Scripts\python.exe app.py
 ```
 
-Con il backend avviato, aprire `index.html` nel browser.
+With the backend running, open `index.html` in the browser.
 
-Per eseguire i test automatici (31 test sull'API):
+To run the automated tests (35 API tests):
 
 ```bash
 .venv\Scripts\python.exe -m pytest
